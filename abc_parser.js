@@ -51,7 +51,7 @@ ABC_FILE.split('\n').forEach(line => {
 
 console.log('Original notes:', file_description.notes);
 
-file_description.notes = file_description.notes.replace(/[\ | \| | \] | \- | \\ ]/g, '');
+file_description.notes = file_description.notes.replace(/[^0-9a-zA-Z{}]/g, '');
 
 // Next, we'll work through the notes charachters one letter at a time to figure out
 // how long each note should last, and where the grace notes are. We'll then put these
@@ -67,8 +67,6 @@ while(notesChecked < file_description.notes.length){
 
     let currentCharacterOrCharacters = file_description.notes[notesChecked];
     const nextCharacter = file_description.notes[notesChecked + 1]
-
-    // console.log(currentCharacterOrCharacters);
 
     if( Number(nextCharacter) > 0 ){
         // If we have a note followed by a number, the file is telling us how long
@@ -113,11 +111,6 @@ while(notesChecked < file_description.notes.length){
         file_description.parsed_notes.push(currentCharacterOrCharacters);
         notesChecked += 1;
     }
-
-
-
-    // console.log(file_description.notes);
-    // console.log(file_description.parsed_notes);
 
 }
 
