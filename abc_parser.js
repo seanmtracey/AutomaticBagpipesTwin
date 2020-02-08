@@ -13,36 +13,34 @@ file_description.parsed_notes = [];
 // Get the details from the header of the files, and separate out the notes info.
 ABC_FILE.split('\n').forEach(line => {
 
-    // Fields in the header (everything up to K:) will be a single letter, followed by 
-    // a ':'. We only care about a couple of these for my uses, so we'll just get those
-    const KEY = line[0];
-    const DATA = line.split(':')[1];
+	// Fields in the header (everything up to K:) will be a single letter, followed by
+	// a ':'. We only care about a couple of these for my uses, so we'll just get those
+	const KEY = line[0];
+	const DATA = line.split(':')[1];
 
-    // console.log(KEY);
+	if(KEY === "T"){
+		file_description.title = DATA;
+	}
 
-    if(KEY === "T"){
-        file_description.title = DATA;
-    }
+	if(KEY === "R"){
+		file_description.song_type = DATA;
+	}
 
-    if(KEY === "R"){
-        file_description.song_type = DATA;
-    }
+	if(KEY === "L"){
+		file_description.note_length = DATA;
+	}
 
-    if(KEY === "L"){
-        file_description.note_length = DATA;
-    }
+	if(KEY === "C"){
+		file_description.composer = DATA;
+	}
 
-    if(KEY === "C"){
-        file_description.composer = DATA;
-    }
-
-    // If there's no ':', we'll assume that the rest of the data is musical notes.
-    // In the future, we may want to split on the K field, as it signifies the start
-    // of the music, but I'm not going to do that for now.
-    if(line[1] !== ':'){
-        console.log(line);
-        file_description.notes += line;
-    }
+	// If there's no ':', we'll assume that the rest of the data is musical notes.
+	// In the future, we may want to split on the K field, as it signifies the start
+	// of the music, but I'm not going to do that for now.
+	if(line[1] !== ':'){
+		console.log(line);
+		file_description.notes += line;
+	}
 
 });
 
@@ -65,52 +63,85 @@ console.log(file_description.notes);
 
 while(notesChecked < file_description.notes.length){
 
-    let currentCharacterOrCharacters = file_description.notes[notesChecked];
-    const nextCharacter = file_description.notes[notesChecked + 1]
+	let currentCharacterOrCharacters = file_description.notes[notesChecked];
+	const nextCharacter = file_description.notes[notesChecked + 1];
 
-    if( Number(nextCharacter) > 0 ){
-        // If we have a note followed by a number, the file is telling us how long
-        // to play that note for (relative to the note length set in the header), so
-        // we'll add the note + the next note to the list    
-        currentCharacterOrCharacters += file_description.notes[notesChecked + 1];
-        notesChecked += currentCharacterOrCharacters.length;
-        file_description.parsed_notes.push(currentCharacterOrCharacters);
-    } else if(nextCharacter ===  '{'){
-        // If we have a '{' as the next character, it means we have a series of grace notes that we need to group
-        // so we'll add this note and work through the grace notes in the next loop  
-        file_description.parsed_notes.push(currentCharacterOrCharacters);
-        notesChecked += 1;
-    } else if(currentCharacterOrCharacters === '{'){
-        // If we have a '{' as the current character, it means we've got a bunch of 
-        // grace notes we need to group together. To that end, we create a new loop
-        // which will search through the rest of the notes until it finds a closing
-        // '}', at which point they'll all be added to the list of parsed notes.
-        currentCharacterOrCharacters = '';
+	const note_descriptor = {
+		isGraceNote : false,
+		notes : [],
+		duration : 1,
+		originalValue : ""
+	};
 
-        let foundEndOfGraceNoteDeclaration = false;
-        let charactersSearched = 0;
+	if( Number(nextCharacter) > 0 ){
 
-        while(!foundEndOfGraceNoteDeclaration){
+		// If we have a note followed by a number, the file is telling us how long
+		// to play that note for (relative to the note length set in the header), so
+		// we'll add the note + the next note to the list
 
-            if(file_description.notes[notesChecked + charactersSearched] !== '}'){
-                currentCharacterOrCharacters += file_description.notes[notesChecked + charactersSearched]
-                charactersSearched += 1;
-            } else {
-                currentCharacterOrCharacters += '}';
-                foundEndOfGraceNoteDeclaration = true;
-            }
+		note_descriptor.notes.push(currentCharacterOrCharacters);
+		note_descriptor.duration = Number(nextCharacter);
+		note_descriptor.originalValue =  currentCharacterOrCharacters + file_description.notes[notesChecked + 1]
 
-        }
+		notesChecked += 2;
+		file_description.parsed_notes.push(note_descriptor);
 
-        file_description.parsed_notes.push(currentCharacterOrCharacters);
+	} else if(nextCharacter ===  '{'){
 
-        notesChecked += charactersSearched + 1;
+		// If we have a '{' as the next character, it means we have a series of grace notes that we need to group
+		// so we'll add this note and work through the grace notes in the next loop
 
-    } else {
+		note_descriptor.notes.push(currentCharacterOrCharacters);
+		note_descriptor.originalValue = currentCharacterOrCharacters;
 
-        file_description.parsed_notes.push(currentCharacterOrCharacters);
-        notesChecked += 1;
-    }
+		file_description.parsed_notes.push(note_descriptor);
+
+		notesChecked += 1;
+
+	} else if(currentCharacterOrCharacters === '{'){
+
+		// If we have a '{' as the current character, it means we've got a bunch of
+		// grace notes we need to group together. To that end, we create a new loop
+		// which will search through the rest of the notes until it finds a closing
+		// '}', at which point they'll all be added to the list of parsed notes.
+
+		currentCharacterOrCharacters = '';
+
+		let foundEndOfGraceNoteDeclaration = false;
+		let charactersSearched = 1;
+
+		while(!foundEndOfGraceNoteDeclaration){
+
+			if(file_description.notes[notesChecked + charactersSearched] !== '}'){
+				currentCharacterOrCharacters += file_description.notes[notesChecked + charactersSearched]
+				charactersSearched += 1;
+			} else {
+				foundEndOfGraceNoteDeclaration = true;
+			}
+
+		}
+
+		note_descriptor.isGraceNote = true;
+		note_descriptor.notes = currentCharacterOrCharacters.split('');
+		note_descriptor.duration = -1;
+		note_descriptor.originalValue = `{${currentCharacterOrCharacters}}`
+
+		file_description.parsed_notes.push(note_descriptor);
+
+		notesChecked += charactersSearched + 1;
+
+	} else {
+
+		// It's a note, Jim.
+
+		note_descriptor.notes.push(currentCharacterOrCharacters);
+		note_descriptor.originalValue = currentCharacterOrCharacters;
+
+		file_description.parsed_notes.push(note_descriptor);
+
+		notesChecked += 1;
+
+	}
 
 }
 
