@@ -99,7 +99,16 @@ const parsed_notes = notes_section
     .split(' ')
     .filter(line => {
         return line !== '' && line !== '&' && line !== '!' && line.indexOf('sharp') < 0;
-    })    
+    }).map(note => {
+
+        const dataSplit = note.split('l_');
+
+        return {
+            note : dataSplit[0],
+            length : dataSplit[1]
+        }
+
+    })
 ;
 
 console.log(parsed_notes);
